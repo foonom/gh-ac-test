@@ -29,6 +29,22 @@ jobs:
       - name: Run a one-line script
         run: echo Hello, world!
 
+      - name: Cleanup storage
+        run: |
+          sudo rm -rf /usr/lib/jvm
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /usr/local/.ghcup
+          sudo rm -rf /usr/local/julia*
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /opt/microsoft /opt/google
+          sudo rm -rf /opt/az
+          sudo rm -rf /opt/hostedtoolcache
+          
+          docker system prune -af || true
+          docker builder prune -af || true
+          df -h
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
         run: |
