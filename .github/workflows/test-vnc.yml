@@ -8,9 +8,9 @@ jobs:
       - name: Install Desktop & Graphics
         run: |
           sudo apt-get update
-          sudo apt-get install -y xfce4 xfce4-goodies \
+          sudo apt-get install -y xfce4 xfce4-terminal \
             tigervnc-standalone-server novnc websockify \
-            mesa-utils libgl1-mesa-dri python3-pip
+            mesa-utils libgl1-mesa-dri mesa-vulkan-drivers python3-pip
 
       - name: Configure VNC & XFCE
         run: |
@@ -50,8 +50,15 @@ jobs:
           sudo dpkg -i cloudflared-linux-amd64.deb
           echo "**********************************************************"
           cloudflared tunnel --url http://localhost:6080 2>&1 | tee /tmp/cf.log &
-          sleep 60
+          sleep 15
           grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
+          sleep 15
+          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
+          sleep 15
+          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
+          sleep 15
+          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
+          
           echo "**********************************************************"
 
       - name: tqdm Testing 
