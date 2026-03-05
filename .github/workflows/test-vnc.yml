@@ -44,8 +44,14 @@ jobs:
           vncserver :1 -geometry 720x1280 -depth 24 -localhost no -rfbauth ~/.vnc/passwd
           /usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080 &
 
+      - name: Start pinggy
+        run: |
+          pip install pinggy
+          python -c "import pinggy; tunnel = pinggy.start_tunnel(forwardto='localhost:6080'); print(f'Tunnel started. Urls: {tunnel.urls}')"
+
       - name: Start Cloudflare Tunnel
         run: |
+          exit 0
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
           echo "**********************************************************"
