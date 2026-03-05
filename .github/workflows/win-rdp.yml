@@ -15,28 +15,25 @@ jobs:
 
       - name: Install Tunnel
         run: |
-          curl.exe -L -o cloudflared.msi https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.msi
-          msiexec.exe /i cloudflared.msi /quiet /norestart
+          curl.exe -L -o cloudflared.exe https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
 
       - name: Start Tunnel
         shell: pwsh
         run: |
-          Start-Process -FilePath "cloudflared.exe" -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardOutput "tunnel.log"
-          Start-Sleep -Seconds 40
+          # Using .\cloudflared.exe ensures PowerShell finds the file in the current folder
+          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardOutput "tunnel.log"
+          Start-Sleep -Seconds 15
           $url = Get-Content tunnel.log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
           Write-Host "**********************************************************"
-          Write-Host "RDP ADDRESS: $url"
-          Write-Host "USER: runneradmin"
-          Write-Host "PASS: Password123!"
+          Write-Host "ACCESS URL: $url"
+          Write-Host "USER: runneradmin | PASS: Password123!"
           Write-Host "**********************************************************"
 
       - name: PowerShell Performance Stress Test
         run: |
-          1..50 | ForEach-Object {
-            Write-Host "--- Starting Performance Cycle $_ at $(Get-Date) ---"
-            $result = Measure-Command { 
-                1..100000 | ForEach-Object { [Math]::Sqrt($_) * [Math]::Sin($_) } 
-            }
-            Write-Host "Cycle Completed in: $($result.TotalMilliseconds) ms"
+          for ($i=1; $i -le 100; $i++) {
+            $data = 1..50000 | ForEach-Object { [Math]::Pow($_, 2) }
+            Write-Host "Background Test Cycle $i Complete"
             Start-Sleep -Seconds 300
           }
+          
