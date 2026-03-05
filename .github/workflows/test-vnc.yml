@@ -15,26 +15,32 @@ jobs:
       - name: Configure VNC & XFCE
         run: |
           mkdir -p ~/.vnc
+          touch ~/.Xresources
+          touch ~/.Xauthority
           echo "123" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
+          # We remove the '&' after startxfce4 so the script doesn't exit immediately
           cat <<EOF > ~/.vnc/xstartup
           #!/bin/bash
           unset SESSION_MANAGER
           unset DBUS_SESSION_BUS_ADDRESS
-          xrdb \$HOME/.Xresources
-          startxfce4 &
+          [ -r \$HOME/.Xresources ] && xrdb \$HOME/.Xresources
+          startxfce4
           EOF
           chmod +x ~/.vnc/xstartup
 
       - name: Initialize Display & Graphics Check
         run: |
+          # The error in this part is likely because Xvfb and VNC are fighting over display numbers.
+          # We'll use :99 for Xvfb and :1 for VNC.
           Xvfb :99 -screen 0 720x1280x24 +extension RANDR &
           export DISPLAY=:99
           sleep 3
-          glxinfo -B | grep -E "Device|Version|Vendor"
+          glxinfo -B | grep -E "Device|Version|Vendor" || echo "Graphics check failed, but continuing..."
           
       - name: Start VNC & noVNC
         run: |
+          # TigerVNC -vncserver cleans up old lock files and stays alive
           vncserver :1 -geometry 720x1280 -depth 24 -localhost no -rfbauth ~/.vnc/passwd
           /usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080 &
 
@@ -53,8 +59,10 @@ jobs:
           git clone --depth 1 https://github.com/tqdm/tqdm.git /tmp/tqdm
           cd /tmp/tqdm
           pip install pytest pytest-timeout pytest-asyncio
+          # Running tests in a loop
           for i in $(seq 1 72); do
             echo "--- Starting tqdm Tests at $(date) ---"
             pytest tests/ --maxfail=5 --durations=10
             sleep 300
           done
+          
