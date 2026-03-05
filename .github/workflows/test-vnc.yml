@@ -50,7 +50,7 @@ jobs:
           sudo dpkg -i cloudflared-linux-amd64.deb
           echo "**********************************************************"
           cloudflared tunnel --url http://localhost:6080 2>&1 | tee /tmp/cf.log &
-          sleep 15
+          sleep 60
           grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
           echo "**********************************************************"
 
