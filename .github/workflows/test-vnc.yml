@@ -1,4 +1,4 @@
-name: Remote Desktop
+name: Remote Testing
 on: workflow_dispatch
 
 jobs:
