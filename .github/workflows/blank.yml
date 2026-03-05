@@ -7,7 +7,37 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+      
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mesa-utils vulkan-tools xvfb libgl1-mesa-dri cargo mesa-vulkan-drivers 
 
+          cargo install du-dust
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Storage Profile
+        run: |
+          echo "### DISK USAGE (TOP 100)"
+          dust / -n 100 -d 3 -X /proc -X /sys -X /dev
+
+      - name: Graphics & Display Emulation
+        run: |
+          echo "### DRIVER CHECK"
+          glxinfo -B | grep -E "Device|Version|Vendor"
+          
+          echo -e "\n### INITIALIZING VIRTUAL DISPLAY"
+          Xvfb :99 -screen 0 1920x1080x24 &
+          export DISPLAY=:99
+          sleep 2
+          vulkaninfo
+          
+          echo "### CAPABILITY TEST"
+          glxgears -info & 
+          GEARS_PID=$!
+          sleep 3
+          kill $GEARS_PID || echo "Graphics test completed."
+          
       - name: Storage Profile
         run: |
           echo "### DISK USAGE PROFILE"
@@ -28,15 +58,13 @@ jobs:
           echo -e "\n### TOP 5 PROCESSES BY CPU"
           ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu | head -n 6
 
-      - name: System Overhead Summary
+      - name: System Summary
         run: |
           echo "### RUNNER INFO"
           nproc --all | xargs echo "CPU Cores:"
           grep MemTotal /proc/meminfo | awk '{print "Total RAM: " $2/1024 " MB"}'
           uptime -p
           
-
-      
       - name: Run fastfetch
         run: |
           sudo add-apt-repository ppa:zhangsongcui3371/fastfetch
