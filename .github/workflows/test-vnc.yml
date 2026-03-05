@@ -32,7 +32,7 @@ jobs:
           echo "### DRIVER CHECK"
           glxinfo -B | grep -E "Device|Version|Vendor"
           echo "### VIRTUAL DISPLAY READY"
-
+          
       - name: Start VNC & noVNC
         run: |
           export DISPLAY=:99
@@ -48,8 +48,20 @@ jobs:
           cloudflared tunnel --url http://localhost:6080 2>&1 | tee /tmp/cf.log &
           sleep 15
           grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html"}'
-          echo "PASSWORD: password123"
+  
           echo "**********************************************************"
 
-      - name: Keep Alive
-        run: sleep 21600
+      - name: tqdm Testing 
+        run: |
+          git clone --depth 1 https://github.com/tqdm/tqdm.git /tmp/tqdm
+          cd /tmp/tqdm
+          
+          pip install pytest pytest-timeout pytest-asyncio
+          
+          for i in $(seq 1 24); do
+            echo "--- Starting tqdm Tests at $(date) ---"
+            pytest tests/ --maxfail=5 --durations=10
+            echo "--- Test Cycle Finished, Sleeping 5m ---"
+            sleep 300
+          done
+          
