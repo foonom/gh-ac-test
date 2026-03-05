@@ -1,0 +1,55 @@
+name: Remote Desktop
+on: workflow_dispatch
+
+jobs:
+  remote-access:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Desktop & Graphics
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xfce4 xfce4-goodies \
+            tightvncserver novnc websockify \
+            mesa-utils libgl1-mesa-dri
+
+      - name: Configure VNC & XFCE
+        run: |
+          mkdir -p ~/.vnc
+          echo "password123" | vncpasswd -f > ~/.vnc/passwd
+          chmod 600 ~/.vnc/passwd
+          cat <<EOF > ~/.vnc/xstartup
+          #!/bin/bash
+          xrdb \$HOME/.Xresources
+          startxfce4 &
+          EOF
+          chmod +x ~/.vnc/xstartup
+
+      - name: Initialize Display & Graphics Check
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 &
+          export DISPLAY=:99
+          sleep 3
+          echo "### DRIVER CHECK"
+          glxinfo -B | grep -E "Device|Version|Vendor"
+          echo "### VIRTUAL DISPLAY READY"
+
+      - name: Start VNC & noVNC
+        run: |
+          export DISPLAY=:99
+          tightvncserver :1 -geometry 1280x720 -depth 24
+          /usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080 &
+
+      - name: Start Cloudflare Tunnel
+        run: |
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+          echo "**********************************************************"
+          # The grep/sed logic below tries to pull the URL directly into the log
+          cloudflared tunnel --url http://localhost:6080 2>&1 | tee /tmp/cf.log &
+          sleep 15
+          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html"}'
+          echo "PASSWORD: password123"
+          echo "**********************************************************"
+
+      - name: Keep Alive
+        run: sleep 21600
