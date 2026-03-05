@@ -1,0 +1,20 @@
+name: Artifact Speed Test (Random Data)
+on: workflow_dispatch
+
+jobs:
+  upload-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate 9GB Random File
+        run: |
+          echo "Generating 9GB of random data... this will take a moment."
+          head -c 9G /dev/urandom > random_test_file
+          du -h random_test_file
+
+      - name: Upload Artifact (9GB)
+        uses: actions/upload-artifact@v4
+        with:
+          name: random-9gb-artifact
+          path: random_test_file
+          compression-level: 0 
+          retention-days: 1
