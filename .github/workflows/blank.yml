@@ -1,55 +1,44 @@
-# This is a basic workflow to help you get started with Actions
+name: Runner Performance Profile
+on: workflow_dispatch
 
-name: CI
-
-# Controls when the workflow will run
-on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  profile:
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      - name: Cleanup storage
+      - name: Storage Profile
         run: |
-          sudo rm -rf /usr/lib/jvm
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/share/swift
-          sudo rm -rf /usr/local/.ghcup
-          sudo rm -rf /usr/local/julia*
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /usr/local/share/chromium
-          sudo rm -rf /opt/microsoft /opt/google
-          sudo rm -rf /opt/az
-          sudo rm -rf /opt/hostedtoolcache
+          echo "### DISK USAGE PROFILE"
+          sudo df -h
+          sudo du -xm / --max-depth=4 2>/dev/null | awk '$1 >= 100' | sort -rn
           
-          docker system prune -af || true
-          docker builder prune -af || true
-          df -h
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+          echo -e "\n### TOP 10 LARGEST FILES"
+          sudo find / -type f -exec du -h {} + 2>/dev/null | sort -rh | head -n 10
+
+      - name: Memory & CPU Profile
+        run: |
+          echo "### RAM USAGE"
+          free -h
+          
+          echo -e "\n### TOP 5 PROCESSES BY MEMORY"
+          ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head -n 6
+          
+          echo -e "\n### TOP 5 PROCESSES BY CPU"
+          ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu | head -n 6
+
+      - name: System Overhead Summary
+        run: |
+          echo "### RUNNER INFO"
+          nproc --all | xargs echo "CPU Cores:"
+          grep MemTotal /proc/meminfo | awk '{print "Total RAM: " $2/1024 " MB"}'
+          uptime -p
+          
+
+      
+      - name: Run fastfetch
         run: |
           sudo add-apt-repository ppa:zhangsongcui3371/fastfetch
           sudo apt update && sudo apt install fastfetch
           fastfetch
-          df -h
-          free -h
