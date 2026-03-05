@@ -10,7 +10,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xfce4 xfce4-terminal \
             tigervnc-standalone-server novnc websockify \
-            mesa-utils libgl1-mesa-dri mesa-vulkan-drivers python3-pip
+            mesa-utils libgl1-mesa-dri python3-pip mesa-vulkan-drivers 
 
       - name: Configure VNC & XFCE
         run: |
@@ -46,27 +46,57 @@ jobs:
 
       - name: Start pinggy
         run: |
+          exit 0
           pip install pinggy
           python -c "import pinggy; tunnel = pinggy.start_tunnel(forwardto='localhost:6080'); print(f'Tunnel started. Urls: {tunnel.urls}')"
 
-      - name: Start Cloudflare Tunnel
+      - name: Start Cloudflare Tunnel with Robust Validation
         run: |
-          exit 0
-          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-          sudo dpkg -i cloudflared-linux-amd64.deb
-          echo "**********************************************************"
-          cloudflared tunnel --url http://localhost:6080 2>&1 | tee /tmp/cf.log &
-          sleep 15
-          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
-          sleep 15
-          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
-          sleep 15
-          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
-          sleep 15
-          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
-          
-          echo "**********************************************************"
+          if ! command -v cloudflared &> /dev/null; then
+            wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+            sudo dpkg -i cloudflared-linux-amd64.deb
+          fi
 
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          VALID_URL=""
+
+          while [ -z "$VALID_URL" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Attempt $RETRY_COUNT: Starting Cloudflare Tunnel..."
+            
+            rm -f /tmp/cf.log
+            cloudflared tunnel --url http://localhost:6080 > /tmp/cf.log 2>&1 &
+            CF_PID=$!
+            
+            for i in {1..12}; do
+              sleep 3
+              FOUND_URL=$(grep -o 'https://[a-zA-Z0-9-]\+\.trycloudflare\.com' /tmp/cf.log | grep -v "api.trycloudflare.com" | head -n 1)
+              
+              if [ -n "$FOUND_URL" ]; then
+                VALID_URL=$FOUND_URL
+                break
+              fi
+            done
+
+            if [ -z "$VALID_URL" ]; then
+              echo "No valid Tunnel URL found (only saw errors or api.trycloudflare.com). Retrying..."
+              kill $CF_PID || true
+              sleep 5
+            fi
+          done
+
+          if [ -z "$VALID_URL" ]; then
+            echo "FAILED: Could not establish a tunnel after $MAX_RETRIES attempts."
+            cat /tmp/cf.log
+            exit 1
+          else
+            echo "**********************************************************"
+            echo "SUCCESS! Tunnel Established."
+            echo "ACCESS URL: ${VALID_URL}/vnc.html?resize=remote"
+            echo "**********************************************************"
+          fi
+          
       - name: tqdm Testing 
         run: |
           git clone --depth 1 https://github.com/tqdm/tqdm.git /tmp/tqdm
