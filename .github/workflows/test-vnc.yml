@@ -9,8 +9,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xfce4 xfce4-goodies \
-            tightvncserver novnc websockify \
-            mesa-utils libgl1-mesa-dri
+            tigervnc-standalone-server novnc websockify \
+            mesa-utils libgl1-mesa-dri python3-pip
 
       - name: Configure VNC & XFCE
         run: |
@@ -19,6 +19,8 @@ jobs:
           chmod 600 ~/.vnc/passwd
           cat <<EOF > ~/.vnc/xstartup
           #!/bin/bash
+          unset SESSION_MANAGER
+          unset DBUS_SESSION_BUS_ADDRESS
           xrdb \$HOME/.Xresources
           startxfce4 &
           EOF
@@ -26,17 +28,14 @@ jobs:
 
       - name: Initialize Display & Graphics Check
         run: |
-          Xvfb :99 -screen 0 720x1280x24 &
+          Xvfb :99 -screen 0 720x1280x24 +extension RANDR &
           export DISPLAY=:99
           sleep 3
-          echo "### DRIVER CHECK"
           glxinfo -B | grep -E "Device|Version|Vendor"
-          echo "### VIRTUAL DISPLAY READY"
           
       - name: Start VNC & noVNC
         run: |
-          export DISPLAY=:99
-          tightvncserver :1 -geometry 720x1280 -depth 24
+          vncserver :1 -geometry 720x1280 -depth 24 -localhost no -rfbauth ~/.vnc/passwd
           /usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080 &
 
       - name: Start Cloudflare Tunnel
@@ -44,24 +43,18 @@ jobs:
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
           echo "**********************************************************"
-          # The grep/sed logic below tries to pull the URL directly into the log
           cloudflared tunnel --url http://localhost:6080 2>&1 | tee /tmp/cf.log &
           sleep 15
-          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html"}'
-  
+          grep -o 'https://[-a-z0-9.]*\.trycloudflare\.com' /tmp/cf.log | head -n 1 | awk '{print "ACCESS URL: " $1 "/vnc.html?resize=remote"}'
           echo "**********************************************************"
 
       - name: tqdm Testing 
         run: |
           git clone --depth 1 https://github.com/tqdm/tqdm.git /tmp/tqdm
           cd /tmp/tqdm
-          
           pip install pytest pytest-timeout pytest-asyncio
-          
-          for i in $(seq 1 24); do
+          for i in $(seq 1 72); do
             echo "--- Starting tqdm Tests at $(date) ---"
             pytest tests/ --maxfail=5 --durations=10
-            echo "--- Test Cycle Finished, Sleeping 5m ---"
             sleep 300
           done
-          
