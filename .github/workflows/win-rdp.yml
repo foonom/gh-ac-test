@@ -1,0 +1,42 @@
+name: Windows RDP Testing
+on: workflow_dispatch
+
+jobs:
+  rdp-session:
+    runs-on: windows-latest
+    steps:
+      - name: Configure RDP
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+          $password = ConvertTo-SecureString "Password123!" -AsPlainText -Force
+          Set-LocalUser -Name "runneradmin" -Password $password
+
+      - name: Install Tunnel
+        run: |
+          curl.exe -L -o cloudflared.msi https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.msi
+          msiexec.exe /i cloudflared.msi /quiet /norestart
+
+      - name: Start Tunnel
+        shell: pwsh
+        run: |
+          Start-Process -FilePath "cloudflared.exe" -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardOutput "tunnel.log"
+          Start-Sleep -Seconds 40
+          $url = Get-Content tunnel.log | Select-String -Pattern "https://.*\.trycloudflare\.com" | ForEach-Object { $_.Matches.Value }
+          Write-Host "**********************************************************"
+          Write-Host "RDP ADDRESS: $url"
+          Write-Host "USER: runneradmin"
+          Write-Host "PASS: Password123!"
+          Write-Host "**********************************************************"
+
+      - name: PowerShell Performance Stress Test
+        run: |
+          1..50 | ForEach-Object {
+            Write-Host "--- Starting Performance Cycle $_ at $(Get-Date) ---"
+            $result = Measure-Command { 
+                1..100000 | ForEach-Object { [Math]::Sqrt($_) * [Math]::Sin($_) } 
+            }
+            Write-Host "Cycle Completed in: $($result.TotalMilliseconds) ms"
+            Start-Sleep -Seconds 300
+          }
