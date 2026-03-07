@@ -9,7 +9,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xfce4 xfce4-terminal \
-            tightvncserver novnc websockify \
+            tigervnc-standalone-server novnc websockify \
             mesa-utils libgl1-mesa-dri python3-pip mesa-vulkan-drivers 
 
       - name: Configure VNC & XFCE
@@ -40,10 +40,26 @@ jobs:
           
       - name: Start VNC & noVNC
         run: |
-          export DISPLAY=:99
-          tightvncserver :1 -geometry 720x1280 -depth 24
+          #export DISPLAY=:99
+          #tightvncserver :1 -geometry 720x1280 -depth 24
           # TigerVNC -vncserver cleans up old lock files and stays alive
           #vncserver :1 -geometry 720x1280 -depth 24 -localhost no -rfbauth ~/.vnc/passwd
+          #/usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080 &
+          vncserver -kill :1 || true
+          
+          # We add -geometry and -randr 0 to stop TigerVNC from 
+          # dynamically changing the desktop size, which enables panning.
+          vncserver :1 \
+            -geometry 1280x720 \
+            -depth 24 \
+            -localhost no \
+            -rfbauth ~/.vnc/passwd \
+            -extension RANDR \
+            -SecurityTypes VncAuth
+          
+          echo "DISPLAY=:1" >> $GITHUB_ENV
+          
+          # Start noVNC with scaling disabled to ensure the 'hand' has something to pan
           /usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080 &
 
       - name: Start pinggy
