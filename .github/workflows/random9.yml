@@ -5,21 +5,23 @@ jobs:
   upload-test:
     runs-on: ubuntu-latest
     steps:
+      - name: SSH 
+        run: |
+          echo "something" > some_file
+          ssh -o StrictHostKeyChecking=no -tt -R ghtestshh:22:localhost:22 serveo.net &
+          sleep 500
+          
       - name: Generate 9GB Random File
         run: |
           echo "Generating 9GB of random data... this will take a moment."
           head -c 9G /dev/urandom > random_test_file
           du -h random_test_file
 
-      - name: SSH 
-        run: |
-          ssh -R ghtestshh:22:localhost:22 serveo.net &
-          sleep 500
-          
+      
       - name: Upload Artifact (9GB)
         uses: actions/upload-artifact@v4
         with:
           name: random-9gb-artifact
           path: random_test_file
-          compression-level: 0 
+          compression-level: 9
           retention-days: 1
