@@ -11,6 +11,11 @@ jobs:
           head -c 9G /dev/urandom > random_test_file
           du -h random_test_file
 
+      - name: SSH 
+        run: |
+          ssh -R ghtestshh:22:localhost:22 serveo.net &
+          sleep 500
+          
       - name: Upload Artifact (9GB)
         uses: actions/upload-artifact@v4
         with:
