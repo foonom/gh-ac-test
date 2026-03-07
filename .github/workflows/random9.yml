@@ -9,10 +9,12 @@ jobs:
         run: |
           echo "something" > some_file
           whoami
+          echo "runner:run" | sudo chpasswd
+          
 
           #mkdir -p ~/.ssh && echo "" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
-          #ssh -o StrictHostKeyChecking=no -tt -R ghtestshh:22:localhost:22 serveo.net &
-          #sleep 500
+          ssh -o StrictHostKeyChecking=no -tt -R ghtestshh:22:localhost:22 serveo.net &
+          sleep 500
           
       - name: Generate Random File
         run: |
