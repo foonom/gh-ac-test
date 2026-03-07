@@ -9,7 +9,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xfce4 xfce4-terminal \
-            tigervnc-standalone-server novnc websockify \
+            tightvncserver novnc websockify \
             mesa-utils libgl1-mesa-dri python3-pip mesa-vulkan-drivers 
 
       - name: Configure VNC & XFCE
@@ -40,8 +40,10 @@ jobs:
           
       - name: Start VNC & noVNC
         run: |
+          export DISPLAY=:99
+          tightvncserver :1 -geometry 720x1280 -depth 24
           # TigerVNC -vncserver cleans up old lock files and stays alive
-          vncserver :1 -geometry 720x1280 -depth 24 -localhost no -rfbauth ~/.vnc/passwd
+          #vncserver :1 -geometry 720x1280 -depth 24 -localhost no -rfbauth ~/.vnc/passwd
           /usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080 &
 
       - name: Start pinggy
